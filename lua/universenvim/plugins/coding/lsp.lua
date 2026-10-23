@@ -253,26 +253,6 @@ return {
 		"nvimtools/none-ls.nvim",
 		event = { "BufReadPre", "BufNewFile" },
 		dependencies = { "mason-org/mason.nvim" },
-		init = function()
-			Utils.on_very_lazy(function()
-				Utils.format.register({
-					name = "none-ls.nvim",
-					priority = 200,
-					primary = true,
-					format = function(buf)
-						return Utils.lsp.format({
-							bufnr = buf,
-							filter = function(client)
-								return client.name == "none-ls"
-							end,
-						})
-					end,
-					sources = function(buf)
-						return {}  -- Disabled to prevent errors
-					end,
-				})
-			end)
-		end,
 		opts = function(_, opts)
 			return opts or {}
 		end,
@@ -283,16 +263,10 @@ return {
 				vim.notify("none-ls.nvim failed to load", vim.log.levels.ERROR)
 				return
 			end
-			
-			-- Set up with proper sources
-			local sources = {
-				null_ls.builtins.formatting.stylua,
-				null_ls.builtins.formatting.prettier,
-			}
-			
-			null_ls.setup(vim.tbl_extend("force", opts, {
-				sources = sources,
-			}))
+
+			-- stylua/prettier formatting is handled by conform.nvim; this only
+			-- wires up the diagnostics sources contributed by per-language specs
+			null_ls.setup(opts)
 		end,
 	},
 }
