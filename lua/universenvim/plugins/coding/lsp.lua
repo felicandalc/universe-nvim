@@ -20,7 +20,7 @@ return {
 		event = { "BufReadPre", "BufNewFile" },
 		dependencies = {
 			{ "folke/neoconf.nvim", cmd = "Neoconf", config = false, dependencies = { "neovim/nvim-lspconfig" } },
-			{ "folke/neodev.nvim", opts = {} },
+			{ "folke/lazydev.nvim", ft = "lua", opts = {} },
 			"mason-org/mason.nvim",
 			"mason-org/mason-lspconfig.nvim",
 			{ "antosha417/nvim-lsp-file-operations", config = true },
