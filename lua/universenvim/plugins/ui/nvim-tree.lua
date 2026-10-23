@@ -1,10 +1,9 @@
 local Utils = require("universenvim.utils.core")
 
 return {
-	"kyazdani42/nvim-tree.lua",
+	"nvim-tree/nvim-tree.lua",
 	cmd = { "NvimTreeToggle", "NvimTreeFocus" },
 	config = function()
-		vim.g.nvim_tree_folder_modifier = ":t"
 		vim.g.loaded_netrw = 1
 		vim.g.loaded_netrwPlugin = 1
 
