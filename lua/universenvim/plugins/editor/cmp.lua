@@ -10,7 +10,6 @@ return {
 			"hrsh7th/cmp-path",
 			"hrsh7th/cmp-nvim-lsp",
 			"hrsh7th/cmp-emoji",
-			"Exafunction/windsurf.nvim",
 		},
 		opts = function()
 			vim.api.nvim_set_hl(0, "CmpGhostText", { link = "Comment", default = true })
@@ -21,13 +20,11 @@ return {
 				Array = " ",
 				Boolean = "󰨙 ",
 				Class = " ",
-				Codeium = "󰘦 ",
 				Color = " ",
 				Control = " ",
 				Collapsed = " ",
 				Constant = "󰏿 ",
 				Constructor = " ",
-				Copilot = " ",
 				Enum = " ",
 				EnumMember = " ",
 				Event = " ",
@@ -51,7 +48,6 @@ return {
 				Snippet = " ",
 				String = " ",
 				Struct = "󰆼 ",
-				TabNine = "󰏚 ",
 				Text = " ",
 				TypeParameter = " ",
 				Unit = " ",
@@ -80,14 +76,7 @@ return {
 					return false
 				end
 				
-				-- Priority 2: Codeium AI suggestions
-				if source1 == "codeium" and source2 ~= "codeium" then
-					return true
-				elseif source2 == "codeium" and source1 ~= "codeium" then
-					return false
-				end
-				
-				-- Priority 3: Regular LSP
+				-- Priority 2: Regular LSP
 				if source1 == "nvim_lsp" and source2 ~= "nvim_lsp" then
 					return true
 				elseif source2 == "nvim_lsp" and source1 ~= "nvim_lsp" then
@@ -147,15 +136,7 @@ return {
 						fallback()
 					end,
 					["<Tab>"] = cmp.mapping(function(fallback)
-						local has_codeium, codeium = pcall(require, "codeium.virtual_text")
-						if has_codeium and codeium.get_current_completion_item() then
-							vim.api.nvim_feedkeys(
-								vim.api.nvim_replace_termcodes(codeium.accept(), true, false, true),
-								"n",
-								false
-							)
-							return
-						elseif cmp.visible() then
+						if cmp.visible() then
 							cmp.select_next_item()
 						elseif require("luasnip").expand_or_jumpable() then
 							vim.fn.feedkeys(
@@ -188,7 +169,6 @@ return {
 				sources = cmp.config.sources({
 					{ name = "lazydev", group_index = 0 },
 					{ name = "nvim_lsp" },
-					{ name = "codeium" },
 					{ name = "path" },
 				}, {
 					{ name = "buffer" },

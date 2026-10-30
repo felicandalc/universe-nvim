@@ -91,7 +91,7 @@ winget install Neovim.Neovim Git.Git BurntSushi.ripgrep.MSVC sharkdp.fd zig.zig 
 scoop install neovim git ripgrep fd zig cmake make tree-sitter nodejs-lts python go pwsh 7zip gzip unzip
 ```
 
-winget has no `gzip`/`unzip` that land on `PATH` (Codeium needs `gzip` to unpack its server); get them with `scoop install gzip unzip`. Set `git config --global core.autocrlf false` (the repo also ships a `.gitattributes`).
+winget has no `gzip`/`unzip` that land on `PATH` (Mason needs them to unpack some packages); get them with `scoop install gzip unzip`. Set `git config --global core.autocrlf false` (the repo also ships a `.gitattributes`).
 
 </details>
 
