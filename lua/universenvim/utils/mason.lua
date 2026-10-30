@@ -33,7 +33,7 @@ local function install(registry, name)
 		return
 	end
 	local pkg = registry.get_package(name)
-	if pkg:is_installed() or pkg:is_installing() or root.missing_toolchain(pkg) then
+	if pkg:is_installed() or pkg:is_installing() or not pkg:is_installable() or root.missing_toolchain(pkg) then
 		return
 	end
 	pkg:install()
@@ -54,7 +54,8 @@ local function on_path(server)
 end
 
 -- Installs the Mason package behind each server (mason-lspconfig enables it once installed).
--- Servers Mason does not package, or cannot build here, are enabled when already on PATH.
+-- Servers Mason does not package, has no build for this platform (clangd on Linux arm64) or cannot
+-- build here are enabled when already on PATH.
 function root.ensure_servers(servers)
 	local registry = require("mason-registry")
 	registry.refresh(vim.schedule_wrap(function()
@@ -62,7 +63,7 @@ function root.ensure_servers(servers)
 		for _, server in ipairs(servers) do
 			local package_name = to_package[server]
 			local pkg = package_name and registry.has_package(package_name) and registry.get_package(package_name)
-			if pkg and not root.missing_toolchain(pkg) then
+			if pkg and pkg:is_installable() and not root.missing_toolchain(pkg) then
 				install(registry, package_name)
 			elseif not (pkg and pkg:is_installed()) and on_path(server) then
 				vim.lsp.enable(server)
