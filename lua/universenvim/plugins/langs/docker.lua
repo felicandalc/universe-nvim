@@ -38,7 +38,17 @@ return {
 		opts = {
 			servers = {
 				dockerls = {},
-				docker_compose_language_service = {},
+				-- Neovim detects compose files as plain yaml, never the "yaml.docker-compose" lspconfig expects
+				docker_compose_language_service = {
+					filetypes = { "yaml" },
+					root_dir = function(bufnr, on_dir)
+						local path = vim.api.nvim_buf_get_name(bufnr)
+						local name = vim.fs.basename(path)
+						if name:match("^docker%-compose.*%.ya?ml$") or name:match("^compose.*%.ya?ml$") then
+							on_dir(vim.fs.dirname(path))
+						end
+					end,
+				},
 			},
 		},
 	},
