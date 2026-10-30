@@ -15,7 +15,8 @@ return {
 			{
 				"<C-g>",
 				function()
-					return vim.fn["codeium#Accept"]()
+					local vt = require("codeium.virtual_text")
+					return vt.get_current_completion_item() and vt.accept() or ""
 				end,
 				expr = true,
 				silent = true,
@@ -25,7 +26,8 @@ return {
 			{
 				"<C-;>",
 				function()
-					return vim.fn["codeium#CycleCompletions"](1)
+					require("codeium.virtual_text").cycle_completions(1)
+					return ""
 				end,
 				expr = true,
 				silent = true,
@@ -35,7 +37,8 @@ return {
 			{
 				"<C-,>",
 				function()
-					return vim.fn["codeium#CycleCompletions"](-1)
+					require("codeium.virtual_text").cycle_completions(-1)
+					return ""
 				end,
 				expr = true,
 				silent = true,
@@ -45,7 +48,7 @@ return {
 			{
 				"<C-x>",
 				function()
-					return vim.fn["codeium#Clear"]()
+					return require("codeium.virtual_text").clear()
 				end,
 				expr = true,
 				silent = true,
