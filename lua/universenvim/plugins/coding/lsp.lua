@@ -226,8 +226,14 @@ return {
 			end
 
 			-- stylua/prettier formatting is handled by conform.nvim; this only
-			-- wires up the diagnostics sources contributed by per-language specs
-			null_ls.setup(opts)
+			-- wires up the diagnostics sources contributed by per-language specs.
+			-- A source whose tool is missing (no toolchain, Mason still installing) errors on every run.
+			null_ls.setup(vim.tbl_extend("force", opts, {
+				sources = vim.tbl_filter(function(source)
+					local command = source.generator and source.generator.opts and source.generator.opts.command
+					return type(command) ~= "string" or vim.fn.executable(command) == 1
+				end, opts.sources or {}),
+			}))
 		end,
 	},
 }
