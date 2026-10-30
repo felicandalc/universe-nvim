@@ -1,0 +1,116 @@
+name: Windows health
+
+on:
+  push:
+    branches:
+      - ci/windows-healthcheck
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install prerequisites (README scoop line)
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
+          $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+          scoop install git
+          scoop bucket add extras
+          scoop install neovim ripgrep fd zig cmake make tree-sitter nodejs-lts python go pwsh 7zip gzip unzip
+          scoop install tree-sitter
+          if (-not (Get-Command tree-sitter -ErrorAction SilentlyContinue)) {
+            Write-Host "::warning::scoop has no tree-sitter, using the GitHub release"
+            $gz = Join-Path $env:RUNNER_TEMP 'ts.gz'
+            Invoke-WebRequest https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-windows-x64.gz -OutFile $gz
+            $in = [IO.File]::OpenRead($gz)
+            $out = [IO.File]::Create("$env:USERPROFILE\scoop\shims\tree-sitter.exe")
+            (New-Object IO.Compression.GZipStream($in, [IO.Compression.CompressionMode]::Decompress)).CopyTo($out)
+            $out.Close(); $in.Close()
+          }
+          git config --global core.autocrlf false
+
+      - name: Restrict PATH to Windows base + scoop (hide runner toolchains)
+        run: |
+          $user = [Environment]::GetEnvironmentVariable('PATH', 'User')
+          $base = 'C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Windows\System32\OpenSSH'
+          $path = "$env:USERPROFILE\scoop\shims;$user;$base"
+          "PATH=$path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host $path
+
+      - name: Tool versions
+        run: |
+          foreach ($t in 'nvim','git','rg','fd','zig','cmake','make','node','npm','python','python3','go','pwsh','7z','tree-sitter','cc','gcc','clang','cl','curl','tar','unzip','gzip') {
+            $c = Get-Command $t -ErrorAction SilentlyContinue
+            Write-Host ("{0,-12} {1}" -f $t, ($(if ($c) { $c.Source } else { 'MISSING' })))
+          }
+          nvim --version | Select-Object -First 3
+          tree-sitter --version
+
+      - name: Install config
+        run: |
+          $dest = Join-Path $env:LOCALAPPDATA 'nvim'
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Copy-Item -Recurse -Force init.lua, lua, ftplugin, lazy-lock.json -Destination $dest
+          Get-ChildItem $dest
+
+      - name: Lazy sync
+        timeout-minutes: 20
+        run: |
+          nvim --headless "+Lazy! sync" +qa 2>&1 | Tee-Object -FilePath lazy-sync.log
+          Write-Host "exit=$LASTEXITCODE"
+
+      - name: Wait for Mason + treesitter installs
+        timeout-minutes: 45
+        env:
+          PROBE_PHASE: install
+        run: |
+          $env:OUT_DIR = (New-Item -ItemType Directory -Force -Path out).FullName
+          $env:SAMPLES_DIR = (Resolve-Path .github/wincheck/samples).Path
+          nvim --headless -c "luafile .github/wincheck/probe.lua" 2>&1 | Tee-Object -FilePath out/install-phase.log
+
+      - name: Probe LSP, toggleterm, fzf, checkhealth
+        timeout-minutes: 15
+        env:
+          PROBE_PHASE: report
+        run: |
+          $env:OUT_DIR = (Resolve-Path out).Path
+          $env:SAMPLES_DIR = (Resolve-Path .github/wincheck/samples).Path
+          nvim --headless -c "luafile .github/wincheck/probe.lua" 2>&1 | Tee-Object -FilePath out/report-phase.log
+
+      - name: Summarize
+        if: always()
+        run: |
+          Copy-Item lazy-sync.log out/ -ErrorAction SilentlyContinue
+          $health = 'out/checkhealth.txt'
+          if (Test-Path $health) {
+            $lines = Get-Content $health
+            $warn = ($lines | Select-String -Pattern '^\s*- (⚠️ )?WARNING' ).Count
+            $err = ($lines | Select-String -Pattern '^\s*- (❌ )?ERROR').Count
+            Write-Host "WARNING=$warn ERROR=$err"
+            $section = ''
+            foreach ($l in $lines) {
+              if ($l -match '^\S.*~$' -or $l -match '^=+$') { continue }
+              if ($l -match '^[a-zA-Z_.\-]+:') { $section = $l }
+              if ($l -match 'WARNING|ERROR') { Write-Host "[$section] $l" }
+            }
+          } else { Write-Host 'no checkhealth.txt' }
+          foreach ($f in 'lsp-clients.txt','toggleterm.txt','fzf.txt','mason-installed.txt','parsers-installed.txt') {
+            Write-Host "===== $f"
+            Get-Content "out/$f" -ErrorAction SilentlyContinue | Select-Object -First 60
+          }
+          $data = Join-Path $env:LOCALAPPDATA 'nvim-data'
+          Get-ChildItem $data -Filter *.log -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Copy-Item $_.FullName "out/data-$($_.Name)" }
+          Copy-Item (Join-Path $env:LOCALAPPDATA 'nvim-data\mason.log') out/ -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-health
+          path: out/
