@@ -15,12 +15,11 @@ end
 -- nvim-lspconfig lists filetypes Neovim never detects ("typescript.tsx", "ejs", "gotmpl"...), which
 -- :checkhealth vim.lsp flags. Filetypes Neovim detects but ships no runtime files for (templ, blade,
 -- gowork...) get one under ftplugin/ so they count as known and survive this filter.
-local function drop_unknown_filetypes(server)
+local function drop_unknown_filetypes(server, known)
 	local filetypes = vim.lsp.config[server] and vim.lsp.config[server].filetypes
 	if not filetypes then
 		return
 	end
-	local known = vim.fn.getcompletion("", "filetype")
 	local kept = vim.tbl_filter(function(ft)
 		return vim.list_contains(known, ft)
 	end, filetypes)
@@ -154,13 +153,14 @@ return {
 			})
 
 			local mason_servers = {}
+			local known_filetypes = vim.fn.getcompletion("", "filetype")
 			for server, server_opts in pairs(opts.servers) do
 				server_opts = server_opts == true and {} or server_opts
 				if server_opts and server_opts.enabled ~= false then
 					local hook = opts.setup[server] or opts.setup["*"]
 					if not (hook and hook(server, server_opts)) then
 						vim.lsp.config(server, without_local_keys(server_opts))
-						drop_unknown_filetypes(server)
+						drop_unknown_filetypes(server, known_filetypes)
 						if server_opts.mason == false then
 							vim.lsp.enable(server)
 						else
