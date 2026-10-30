@@ -131,7 +131,7 @@ function keymaps_root.resolve(buffer)
 	if not Keys.resolve then
 		return {}
 	end
-	local spec = keymaps_root.get()
+	local spec = vim.list_extend({}, keymaps_root.get())
 	local opts = Utils.opts("nvim-lspconfig")
 	local clients = root.get_clients({ bufnr = buffer })
 	for _, client in ipairs(clients) do

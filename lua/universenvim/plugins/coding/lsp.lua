@@ -12,19 +12,20 @@ local function without_local_keys(server_opts)
 	return config
 end
 
--- nvim-lspconfig lists filetypes Neovim never sets (e.g. "typescript.tsx", "yaml.gitlab"); :checkhealth
--- vim.lsp flags every filetype without runtime files, so keep only the ones Neovim knows.
-local function drop_unknown_filetypes(server)
+-- nvim-lspconfig still lists legacy compound filetypes Neovim never sets (e.g. "typescript.tsx",
+-- "yaml.gitlab"). Only those are dropped: plain names may be detected without runtime files (templ, blade).
+local function drop_unknown_compound_filetypes(server)
 	local filetypes = vim.lsp.config[server] and vim.lsp.config[server].filetypes
 	if not filetypes then
 		return
 	end
 	local known = vim.fn.getcompletion("", "filetype")
-	vim.lsp.config(server, {
-		filetypes = vim.tbl_filter(function(ft)
-			return vim.list_contains(known, ft)
-		end, filetypes),
-	})
+	local kept = vim.tbl_filter(function(ft)
+		return not ft:find("%.") or vim.list_contains(known, ft)
+	end, filetypes)
+	if #kept > 0 then
+		vim.lsp.config(server, { filetypes = kept })
+	end
 end
 
 return {
@@ -158,7 +159,7 @@ return {
 					local hook = opts.setup[server] or opts.setup["*"]
 					if not (hook and hook(server, server_opts)) then
 						vim.lsp.config(server, without_local_keys(server_opts))
-						drop_unknown_filetypes(server)
+						drop_unknown_compound_filetypes(server)
 						if server_opts.mason == false then
 							vim.lsp.enable(server)
 						else
@@ -166,7 +167,6 @@ return {
 						end
 					end
 				end
-				return use_mason
 			end
 
 			Utils.mason.ensure_servers(mason_servers)

@@ -43,7 +43,7 @@ Neovim **0.12 or later** (latest [stable release](https://github.com/neovim/neov
 | Node.js + npm | TypeScript, ESLint, Tailwind, JSON, YAML, Docker LSPs, prettier, markdownlint, markdown-preview | for those languages |
 | Python 3 (+ `venv`) | cmakelang, cmakelint | for CMake |
 | Go | gopls, goimports, gofumpt, gomodifytags, impl, delve | for Go |
-| Clipboard tool | `pbcopy` (macOS, built in), `wl-clipboard` or `xclip` (Linux), built in on Windows. Without one, OSC 52 is used | no |
+| Clipboard tool | `pbcopy` (macOS, built in), `wl-clipboard` or `xclip` (Linux), built in on Windows. Without one, Neovim falls back to OSC 52 when the terminal supports it | no |
 | `libsqlite3` | yanky.nvim history (not used on Windows) | yes on Linux |
 | `gh`, `lazygit` | octo.nvim, the lazygit terminal | no |
 | [Nerd Font](https://www.nerdfonts.com) | icons | no |

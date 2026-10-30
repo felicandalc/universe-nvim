@@ -9,6 +9,7 @@ return {
 		config = function()
 			require("codeium").setup({
 				enable_chat = true,
+				virtual_text = { enabled = true, map_keys = false },
 			})
 		end,
 		keys = {
@@ -46,7 +47,7 @@ return {
 				desc = "Previous Codeium suggestion",
 			},
 			{
-				"<C-x>",
+				"<C-]>",
 				function()
 					return require("codeium.virtual_text").clear()
 				end,

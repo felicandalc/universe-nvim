@@ -47,7 +47,7 @@ return {
 			for _, dir in ipairs({ "parser", "parser-info" }) do
 				vim.fn.delete(vim.fs.joinpath(plugin.dir, dir), "rf")
 			end
-			vim.cmd("TSUpdate")
+			require("nvim-treesitter").update()
 		end,
 		cmd = { "TSUpdate", "TSInstall", "TSUninstall", "TSLog" },
 		opts = {
