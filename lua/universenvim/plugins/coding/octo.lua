@@ -25,7 +25,7 @@ return {
 				reaction_viewer_hint_icon = "", -- marker for user reactions
 				user_icon = " ", -- user icon
 				timeline_marker = "", -- timeline marker
-				timeline_indent = "2",
+				timeline_indent = 2,
 				right_bubble_delimiter = "", -- Bubble delimiter
 				left_bubble_delimiter = "", -- Bubble delimiter
 				github_hostname = "", -- GitHub Enterprise host
@@ -35,7 +35,7 @@ return {
 				},
 				file_panel = {
 					size = 10, -- changed files panel rows
-					use_icons = true, -- use web-devicons in file panel (if false, nvim-web-devicons does not need to be installed)
+					icons = true, -- true = nvim-web-devicons, false = disabled
 				},
 				mappings = {
 					issue = {
