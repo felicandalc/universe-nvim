@@ -1,11 +1,11 @@
 <h1 align="center">Universe Nvim</h1>
 
 <div align="center">
-    <a href="https://github.com/felicandalc/nvim/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/felicandalc/nvim?style=flat-square&logo=starship&color=DCD7C9&labelColor=2C3639&logoColor=DCD7C9" /></a>
-    <a href="https://github.com/felicandalc/nvim/LICENSE"><img alt="License" src="https://img.shields.io/github/license/felicandalc/nvim?style=flat-square&color=DCD7C9&labelColor=2C3639" /></a>
+    <a href="https://github.com/felicandalc/universe-nvim/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/felicandalc/universe-nvim?style=flat-square&logo=starship&color=DCD7C9&labelColor=2C3639&logoColor=DCD7C9" /></a>
+    <a href="https://github.com/felicandalc/universe-nvim/LICENSE"><img alt="License" src="https://img.shields.io/github/license/felicandalc/universe-nvim?style=flat-square&color=DCD7C9&labelColor=2C3639" /></a>
     <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&color=DCD7C9&labelColor=2C3639" />
-    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/felicandalc/nvim/master?style=flat-square&color=DCD7C9&labelColor=2C3639" />
-    <img alt="Neovim version" src="https://img.shields.io/badge/Neovim->=0.9-57A143?style=flat-square&logo=neovim&color=DCD7C9&labelColor=2C3639" />
+    <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/felicandalc/universe-nvim/next?style=flat-square&color=DCD7C9&labelColor=2C3639" />
+    <img alt="Neovim version" src="https://img.shields.io/badge/Neovim->=0.12-57A143?style=flat-square&logo=neovim&color=DCD7C9&labelColor=2C3639" />
 </div>
 
 <hr />
@@ -32,9 +32,66 @@ You can freely use it <strong>out-of-the-box</strong> or you can install it and 
 
 ### Pre-requisites
 
-- Check Neovim version, you'll need at least the [latest release](https://github.com/neovim/neovim/releases/tag/stable)
-- Install [Nerd Font](https://www.nerdfonts.com) and set it as your terminal font (optional)
-- Install [Ripgrep](https://github.com/BurntSushi/ripgrep), it is required for Telescope searches (optional)
+Neovim **0.12 or later** (latest [stable release](https://github.com/neovim/neovim/releases/tag/stable)). Distro packages are often older; use the official tarball, AppImage or installer if yours is.
+
+| Tool | Why | Required |
+| --- | --- | --- |
+| `git`, `curl`, `tar`, `unzip`, `gzip` | lazy.nvim, Mason and parser downloads | yes |
+| C compiler (`cc`/`gcc`/`clang`, MSVC or `zig` on Windows) and `make` | treesitter parsers, telescope-fzf-native, LuaSnip jsregexp | yes |
+| [`tree-sitter` CLI](https://github.com/tree-sitter/tree-sitter/blob/master/crates/cli/README.md) 0.26.1+ | nvim-treesitter (`main`) builds parsers with it. Install it from your package manager or the GitHub release, not npm | yes |
+| [ripgrep](https://github.com/BurntSushi/ripgrep), [fd](https://github.com/sharkdp/fd) | Telescope `live_grep` / `find_files` | yes |
+| Node.js + npm | TypeScript, ESLint, Tailwind, JSON, YAML, Docker LSPs, prettier, markdownlint, markdown-preview | for those languages |
+| Python 3 (+ `venv`) | cmakelang, cmakelint | for CMake |
+| Go | gopls, goimports, gofumpt, gomodifytags, impl, delve | for Go |
+| Clipboard tool | `pbcopy` (macOS, built in), `wl-clipboard` or `xclip` (Linux), built in on Windows. Without one, OSC 52 is used | no |
+| `libsqlite3` | yanky.nvim history (not used on Windows) | yes on Linux |
+| `gh`, `lazygit` | octo.nvim, the lazygit terminal | no |
+| [Nerd Font](https://www.nerdfonts.com) | icons | no |
+
+Mason packages that need a missing toolchain (Node, Python, Go) are skipped instead of failing; install the toolchain and restart Neovim to get them.
+
+<details open="open">
+<summary>macOS (Homebrew)</summary>
+
+```sh
+xcode-select --install
+brew install neovim git ripgrep fd tree-sitter-cli node python go gh lazygit
+```
+
+</details>
+
+<details>
+<summary>Linux</summary>
+
+```sh
+# Debian / Ubuntu (install Neovim itself from the official release, apt ships an old one)
+sudo apt install git curl tar unzip gzip build-essential ripgrep fd-find nodejs npm python3 python3-venv golang-go libsqlite3-dev xclip wl-clipboard
+sudo ln -s "$(command -v fdfind)" /usr/local/bin/fd
+# tree-sitter CLI: download the binary from https://github.com/tree-sitter/tree-sitter/releases
+
+# Fedora
+sudo dnf install neovim git curl tar unzip gzip gcc gcc-c++ make ripgrep fd-find tree-sitter-cli nodejs npm python3 golang sqlite-devel xclip wl-clipboard
+
+# Arch
+sudo pacman -S neovim git curl tar unzip gzip base-devel ripgrep fd tree-sitter-cli nodejs npm python go sqlite xclip wl-clipboard
+```
+
+</details>
+
+<details>
+<summary>Windows (winget or scoop)</summary>
+
+```powershell
+winget install Neovim.Neovim Git.Git BurntSushi.ripgrep.MSVC sharkdp.fd zig.zig Kitware.CMake OpenJS.NodeJS.LTS Python.Python.3.12 GoLang.Go Microsoft.PowerShell 7zip.7zip
+# or
+scoop install neovim git ripgrep fd zig cmake make nodejs-lts python go pwsh 7zip
+```
+
+Install the `tree-sitter` CLI from its [GitHub releases](https://github.com/tree-sitter/tree-sitter/releases) and put it on `PATH`. Set `git config --global core.autocrlf false` (the repo also ships a `.gitattributes`).
+
+</details>
+
+After installing, start Neovim, let lazy.nvim, Mason and nvim-treesitter finish, then run `:checkhealth`.
 
 ### Installation
 
@@ -53,7 +110,7 @@ You can freely use it <strong>out-of-the-box</strong> or you can install it and 
 - Clone configuration
 
   ```sh
-  git clone https://github.com/felicandalc/nvim ~/.config/nvim
+  git clone https://github.com/felicandalc/universe-nvim ~/.config/nvim
   ```
 
 </details>
@@ -73,7 +130,7 @@ You can freely use it <strong>out-of-the-box</strong> or you can install it and 
 - Clone configuration
 
   ```sh
-  git clone https://github.com/felicandalc/nvim $HOME\AppData\Local\nvim
+  git clone https://github.com/felicandalc/universe-nvim $HOME\AppData\Local\nvim
   ```
 
 </details>
