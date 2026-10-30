@@ -20,9 +20,9 @@ return {
 		event = { "BufReadPre", "BufNewFile" },
 		dependencies = {
 			{ "folke/neoconf.nvim", cmd = "Neoconf", config = false, dependencies = { "neovim/nvim-lspconfig" } },
-			{ "folke/neodev.nvim", opts = {} },
-			"williamboman/mason.nvim",
-			"williamboman/mason-lspconfig.nvim",
+			{ "folke/lazydev.nvim", ft = "lua", opts = {} },
+			"mason-org/mason.nvim",
+			"mason-org/mason-lspconfig.nvim",
 			{ "antosha417/nvim-lsp-file-operations", config = true },
 		},
 		opts = {
@@ -174,56 +174,44 @@ return {
 				opts.capabilities or {}
 			)
 
-			local function setup(server)
+			local have_mason, mlsp = pcall(require, "mason-lspconfig")
+			local all_mslp_servers = have_mason
+				and vim.tbl_keys(require("mason-lspconfig.mappings").get_mason_map().lspconfig_to_package)
+				or {}
+			local mason_exclude = {}
+
+			---@return boolean? use_mason
+			local function configure(server)
 				local server_opts = vim.tbl_deep_extend("force", {
 					capabilities = vim.deepcopy(capabilities),
 				}, servers[server] or {})
 
-				if opts.setup[server] then
-					if opts.setup[server](server, server_opts) then
-						return
-					end
-				elseif opts.setup["*"] then
-					if opts.setup["*"](server, server_opts) then
-						return
-					end
-				end
-				require("lspconfig")[server].setup(server_opts)
-			end
+				local use_mason = server_opts.mason ~= false and vim.tbl_contains(all_mslp_servers, server)
+				local setup = opts.setup[server] or opts.setup["*"]
 
-			local have_mason, mlsp = pcall(require, "mason-lspconfig")
-			local all_mslp_servers = {}
-			if have_mason then
-				-- Use the correct API to get mappings
-				local ok, mappings = pcall(require, "mason-lspconfig.mappings")
-				if ok then
-					local mason_map = mappings.get_mason_map()
-					all_mslp_servers = vim.tbl_keys(mason_map.lspconfig_to_package)
+				if setup and setup(server, server_opts) then
+					mason_exclude[#mason_exclude + 1] = server
 				else
-					-- Fallback: get available servers directly
-					all_mslp_servers = mlsp.get_available_servers() or {}
-				end
-			end
-
-			local ensure_installed = {}
-			for server, server_opts in pairs(servers) do
-				if server_opts then
-					server_opts = server_opts == true and {} or server_opts
-					if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
-						setup(server)
-					else
-						ensure_installed[#ensure_installed + 1] = server
+					vim.lsp.config(server, server_opts)
+					if not use_mason then
+						vim.lsp.enable(server)
 					end
 				end
+				return use_mason
 			end
 
+			local ensure_installed = vim.tbl_filter(configure, vim.tbl_keys(servers))
+
 			if have_mason then
-				mlsp.setup({ ensure_installed = ensure_installed, handlers = { setup }, automatic_installation = true })
+				mlsp.setup({
+					ensure_installed = ensure_installed,
+					automatic_enable = { exclude = mason_exclude },
+				})
 			end
 		end,
 	},
 	{
-		"williamboman/mason.nvim",
+		"mason-org/mason.nvim",
 		cmd = "Mason",
 		keys = { { "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" } },
 		build = ":MasonUpdate",
@@ -264,27 +252,7 @@ return {
 	{
 		"nvimtools/none-ls.nvim",
 		event = { "BufReadPre", "BufNewFile" },
-		dependencies = { "williamboman/mason.nvim" },
-		init = function()
-			Utils.on_very_lazy(function()
-				Utils.format.register({
-					name = "none-ls.nvim",
-					priority = 200,
-					primary = true,
-					format = function(buf)
-						return Utils.lsp.format({
-							bufnr = buf,
-							filter = function(client)
-								return client.name == "none-ls"
-							end,
-						})
-					end,
-					sources = function(buf)
-						return {}  -- Disabled to prevent errors
-					end,
-				})
-			end)
-		end,
+		dependencies = { "mason-org/mason.nvim" },
 		opts = function(_, opts)
 			return opts or {}
 		end,
@@ -295,16 +263,10 @@ return {
 				vim.notify("none-ls.nvim failed to load", vim.log.levels.ERROR)
 				return
 			end
-			
-			-- Set up with proper sources
-			local sources = {
-				null_ls.builtins.formatting.stylua,
-				null_ls.builtins.formatting.prettier,
-			}
-			
-			null_ls.setup(vim.tbl_extend("force", opts, {
-				sources = sources,
-			}))
+
+			-- stylua/prettier formatting is handled by conform.nvim; this only
+			-- wires up the diagnostics sources contributed by per-language specs
+			null_ls.setup(opts)
 		end,
 	},
 }
