@@ -40,9 +40,10 @@ Neovim **0.12 or later** (latest [stable release](https://github.com/neovim/neov
 | C compiler (`cc`/`gcc`/`clang`, MSVC or `zig` on Windows) and `make` | treesitter parsers, telescope-fzf-native, LuaSnip jsregexp | yes |
 | [`tree-sitter` CLI](https://github.com/tree-sitter/tree-sitter/blob/master/crates/cli/README.md) 0.26.1+ | nvim-treesitter (`main`) builds parsers with it. Install it from your package manager or the GitHub release, not npm | yes |
 | [ripgrep](https://github.com/BurntSushi/ripgrep), [fd](https://github.com/sharkdp/fd) | Telescope `live_grep` / `find_files` | yes |
-| Node.js + npm | TypeScript, ESLint, Tailwind, JSON, YAML, Docker LSPs, prettier, markdownlint, markdown-preview | for those languages |
+| Node.js 22.13+ and npm | TypeScript, ESLint, Tailwind, JSON, YAML, Docker LSPs, prettier, markdownlint, markdown-preview. yaml-language-server will not start on older Node | for those languages |
 | Python 3 (+ `venv`) | cmakelang, cmakelint | for CMake |
 | Go | gopls, goimports, gofumpt, gomodifytags, impl, delve | for Go |
+| `clangd` | C/C++ LSP. Mason installs it except on Linux arm64, where it has no build; Xcode ships it on macOS | for C/C++ on Linux arm64 |
 | Clipboard tool | `pbcopy` (macOS, built in), `wl-clipboard` or `xclip` (Linux), built in on Windows. Without one, Neovim falls back to OSC 52 when the terminal supports it | no |
 | `libsqlite3` | yanky.nvim history (not used on Windows) | yes on Linux |
 | `gh`, `lazygit` | octo.nvim, the lazygit terminal | no |
@@ -65,15 +66,18 @@ brew install neovim git ripgrep fd tree-sitter-cli node python go gh lazygit
 
 ```sh
 # Debian / Ubuntu (install Neovim itself from the official release, apt ships an old one)
-sudo apt install git curl tar unzip gzip build-essential ripgrep fd-find nodejs npm python3 python3-venv golang-go libsqlite3-dev xclip wl-clipboard
+sudo apt install git curl tar unzip gzip build-essential ripgrep fd-find python3 python3-venv golang-go libsqlite3-dev clangd xclip wl-clipboard
 sudo ln -s "$(command -v fdfind)" /usr/local/bin/fd
+# apt's Node.js is too old for yaml-language-server; NodeSource ships a current one (npm included)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install nodejs
 # tree-sitter CLI: download the binary from https://github.com/tree-sitter/tree-sitter/releases
 
 # Fedora
-sudo dnf install neovim git curl tar unzip gzip gcc gcc-c++ make ripgrep fd-find tree-sitter-cli nodejs npm python3 golang sqlite-devel xclip wl-clipboard
+sudo dnf install neovim git curl tar unzip gzip gcc gcc-c++ make ripgrep fd-find tree-sitter-cli nodejs npm python3 golang sqlite-devel clang-tools-extra xclip wl-clipboard
 
 # Arch
-sudo pacman -S neovim git curl tar unzip gzip base-devel ripgrep fd tree-sitter-cli nodejs npm python go sqlite xclip wl-clipboard
+sudo pacman -S neovim git curl tar unzip gzip base-devel ripgrep fd tree-sitter-cli nodejs npm python go sqlite clang xclip wl-clipboard
 ```
 
 </details>
