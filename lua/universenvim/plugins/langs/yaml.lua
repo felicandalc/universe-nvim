@@ -1,5 +1,3 @@
-local Utils = require("universenvim.utils")
-
 return {
 	{
 		"nvim-treesitter/nvim-treesitter",
@@ -27,10 +25,10 @@ return {
 							},
 						},
 					},
-					on_new_config = function(new_config)
-						new_config.settings.yaml.schemas = vim.tbl_deep_extend(
+					before_init = function(_, config)
+						config.settings.yaml.schemas = vim.tbl_deep_extend(
 							"force",
-							new_config.settings.yaml.schemas or {},
+							config.settings.yaml.schemas or {},
 							require("schemastore").yaml.schemas()
 						)
 					end,
@@ -49,17 +47,6 @@ return {
 						},
 					},
 				},
-			},
-			setup = {
-				yamlls = function()
-					if vim.fn.has("nvim-0.10") == 0 then
-						Utils.lsp.on_attach(function(client, _)
-							if client.name == "yamlls" then
-								client.server_capabilities.documentFormattingProvider = true
-							end
-						end)
-					end
-				end,
 			},
 		},
 	},

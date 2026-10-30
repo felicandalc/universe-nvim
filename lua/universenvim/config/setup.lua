@@ -3,7 +3,12 @@ local init = require("universenvim.utils.setup").init
 local Utils = require("universenvim.utils.core")
 
 function M.setup()
-	local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+	if vim.fn.has("nvim-0.12") == 0 then
+		vim.api.nvim_echo({ { "UniverseNvim requires Neovim 0.12 or later", "ErrorMsg" } }, true, {})
+		return
+	end
+
+	local lazypath = vim.fs.joinpath(vim.fn.stdpath("data"), "lazy", "lazy.nvim")
 	if not vim.uv.fs_stat(lazypath) then
 		vim.fn.system({
 			"git",
@@ -31,9 +36,8 @@ function M.setup()
 		{ import = "universenvim.plugins.editor" },
 		{ import = "universenvim.plugins.langs" },
 		{ import = "universenvim.plugins.ui" },
-		{ import = "universenvim.plugins.ai" },
 	}, {
-		lockfile = vim.fn.stdpath("config") .. "/lazy-lock.json",
+		lockfile = vim.fs.joinpath(vim.fn.stdpath("config"), "lazy-lock.json"),
 		defaults = {
 			lazy = false,
 			version = false,

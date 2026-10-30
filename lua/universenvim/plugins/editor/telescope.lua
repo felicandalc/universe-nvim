@@ -1,5 +1,29 @@
 local Utils = require("universenvim.utils.core")
 
+local function has(exe)
+	return vim.fn.executable(exe) == 1
+end
+
+local function run(plugin, cmd)
+	local result = vim.system(cmd, { cwd = plugin.dir, text = true }):wait()
+	if result.code ~= 0 then
+		error(table.concat(cmd, " ") .. " failed:\n" .. (result.stdout or "") .. (result.stderr or ""))
+	end
+end
+
+-- the Makefile hardcodes gcc on Windows, so a zig-only toolchain has to override CC
+local function fzf_build(plugin)
+	if has("make") and (not Utils.is_windows() or has("gcc")) then
+		return run(plugin, { "make" })
+	end
+	if has("make") and has("zig") then
+		return run(plugin, { "make", "CC=zig cc" })
+	end
+	run(plugin, { "cmake", "-S.", "-Bbuild", "-DCMAKE_BUILD_TYPE=Release" })
+	run(plugin, { "cmake", "--build", "build", "--config", "Release" })
+	run(plugin, { "cmake", "--install", "build", "--config", "Release", "--prefix", "build" })
+end
+
 return {
 	{
 		"nvim-telescope/telescope.nvim",
@@ -7,9 +31,7 @@ return {
 			"nvim-lua/plenary.nvim",
 			{
 				"nvim-telescope/telescope-fzf-native.nvim",
-				build = Utils.is_windows()
-						and "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release -G 'MinGW Makefiles' -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && cmake --build build --config Release"
-					or "make",
+				build = fzf_build,
 			},
 			"nvim-tree/nvim-web-devicons",
 		},
@@ -126,7 +148,13 @@ return {
 				},
 			})
 
-			pcall(telescope.load_extension, "fzf")
+			local fzf_ok, fzf_err = pcall(telescope.load_extension, "fzf")
+			if not fzf_ok then
+				vim.notify(
+					"telescope-fzf-native failed to load, rebuild it with `:Lazy build telescope-fzf-native.nvim`\n" .. fzf_err,
+					vim.log.levels.WARN
+				)
+			end
 
 			local keymap = vim.keymap
 
@@ -141,5 +169,5 @@ return {
 			)
 		end,
 	},
-	"nvim-telescope/telescope-media-files.nvim",
+	{ "nvim-telescope/telescope-media-files.nvim", enabled = not Utils.is_windows() },
 }

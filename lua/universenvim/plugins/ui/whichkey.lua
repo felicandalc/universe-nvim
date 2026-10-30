@@ -3,6 +3,7 @@ local Utils = require("universenvim.utils.core")
 return {
 	"folke/which-key.nvim",
 	event = "VeryLazy",
+	dependencies = { { "nvim-mini/mini.icons", opts = {} } },
 	opts_extend = { "spec" },
 	opts = {
 		defaults = {},

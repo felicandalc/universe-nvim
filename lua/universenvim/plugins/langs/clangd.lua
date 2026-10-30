@@ -44,22 +44,21 @@ return {
 			servers = {
 				clangd = {
 					keys = {
-						{ "<leader>cR", "<cmd>ClangdSwitchSourceHeader<cr>", desc = "Switch Source/Header (C/C++)" },
+						{ "<leader>cR", "<cmd>LspClangdSwitchSourceHeader<cr>", desc = "Switch Source/Header (C/C++)" },
 					},
-					root_dir = function(fname)
-						return require("lspconfig.util").root_pattern(
+					root_markers = {
+						{
 							"Makefile",
 							"configure.ac",
 							"configure.in",
 							"config.h.in",
 							"meson.build",
 							"meson_options.txt",
-							"build.ninja"
-						)(fname) or require("lspconfig.util").root_pattern(
-							"compile_commands.json",
-							"compile_flags.txt"
-						)(fname) or vim.fs.dirname(vim.fs.find(".git", { path = fname, upward = true })[1])
-					end,
+							"build.ninja",
+						},
+						{ "compile_commands.json", "compile_flags.txt" },
+						".git",
+					},
 					capabilities = {
 						offsetEncoding = { "utf-16" },
 					},
@@ -80,11 +79,8 @@ return {
 				},
 			},
 			setup = {
-				clangd = function(_, opts)
-					local clangd_ext_opts = Utils.opts("clangd_extensions.nvim")
-					require("clangd_extensions").setup(
-						vim.tbl_deep_extend("force", clangd_ext_opts or {}, { server = opts })
-					)
+				clangd = function()
+					require("clangd_extensions").setup(Utils.opts("clangd_extensions.nvim"))
 					return false
 				end,
 			},
@@ -116,7 +112,7 @@ return {
 					host = "localhost",
 					port = "${port}",
 					executable = {
-						command = "codelldb",
+						command = vim.fn.exepath("codelldb") ~= "" and vim.fn.exepath("codelldb") or "codelldb",
 						args = {
 							"--port",
 							"${port}",
