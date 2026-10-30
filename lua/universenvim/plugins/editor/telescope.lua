@@ -7,9 +7,8 @@ return {
 			"nvim-lua/plenary.nvim",
 			{
 				"nvim-telescope/telescope-fzf-native.nvim",
-				build = Utils.is_windows()
-						and "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release -G 'MinGW Makefiles' -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && cmake --build build --config Release"
-					or "make",
+				build = vim.fn.executable("make") == 1 and "make"
+					or "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --config Release --prefix build",
 			},
 			"nvim-tree/nvim-web-devicons",
 		},
@@ -126,7 +125,13 @@ return {
 				},
 			})
 
-			pcall(telescope.load_extension, "fzf")
+			local fzf_ok, fzf_err = pcall(telescope.load_extension, "fzf")
+			if not fzf_ok then
+				vim.notify(
+					"telescope-fzf-native failed to load, rebuild it with `:Lazy build telescope-fzf-native.nvim`\n" .. fzf_err,
+					vim.log.levels.WARN
+				)
+			end
 
 			local keymap = vim.keymap
 
@@ -141,5 +146,5 @@ return {
 			)
 		end,
 	},
-	"nvim-telescope/telescope-media-files.nvim",
+	{ "nvim-telescope/telescope-media-files.nvim", enabled = not Utils.is_windows() },
 }

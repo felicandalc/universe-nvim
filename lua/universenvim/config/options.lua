@@ -4,7 +4,23 @@ vim.g.markdown_recommended_style = 0
 vim.g.loaded_perl_provider = 0
 vim.g.loaded_ruby_provider = 0
 vim.g.loaded_python3_provider = 0
+vim.g.loaded_node_provider = 0
 
+-- Headless/SSH Linux sessions without a clipboard tool would leave "+ and "* dead.
+local function has_clipboard_tool()
+	if vim.fn.has("mac") == 1 or vim.fn.has("win32") == 1 then
+		return true
+	end
+	local env = vim.env
+	return (env.WAYLAND_DISPLAY and vim.fn.executable("wl-copy") == 1)
+		or (env.DISPLAY and (vim.fn.executable("xclip") == 1 or vim.fn.executable("xsel") == 1))
+		or (env.TMUX and vim.fn.executable("tmux") == 1)
+		or vim.fn.executable("termux-clipboard-set") == 1
+end
+
+if not has_clipboard_tool() then
+	vim.g.clipboard = "osc52"
+end
 
 local options = {
 	autowrite = true, -- Enable auto write
