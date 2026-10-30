@@ -11,11 +11,13 @@ function keymaps_root.get()
 		return keymaps_root._keys
 	end
 	keymaps_root._keys = {
-		{ "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp Info" },
+		{ "<leader>cl", "<cmd>checkhealth vim.lsp<cr>", desc = "Lsp Info" },
 		{
 			"gd",
 			function()
-				local params = vim.lsp.util.make_position_params()
+				local function params(client)
+					return vim.lsp.util.make_position_params(0, client.offset_encoding)
+				end
 				vim.lsp.buf_request(0, "textDocument/definition", params, function(err, result, ctx)
 					if err then
 						vim.notify("Error getting definitions: " .. err.message, vim.log.levels.ERROR)
@@ -27,13 +29,16 @@ function keymaps_root.get()
 						return
 					end
 					
+					local encoding = vim.lsp.get_client_by_id(ctx.client_id).offset_encoding
 					local items = type(result[1]) == "table" and result or { result }
 					local unique_items = {}
 					local seen = {}
 					
 					for _, item in ipairs(items) do
-						if item.uri and item.range then
-							local key = item.uri .. ":" .. item.range.start.line .. ":" .. item.range.start.character
+						local uri = item.uri or item.targetUri
+						local range = item.range or item.targetSelectionRange
+						if uri and range then
+							local key = uri .. ":" .. range.start.line .. ":" .. range.start.character
 							if not seen[key] then
 								seen[key] = true
 								table.insert(unique_items, item)
@@ -42,11 +47,11 @@ function keymaps_root.get()
 					end
 					
 					if #unique_items == 1 then
-						vim.lsp.util.jump_to_location(unique_items[1], vim.lsp.get_client_by_id(ctx.client_id).offset_encoding, true)
+						vim.lsp.util.show_document(unique_items[1], encoding, { focus = true, reuse_win = true })
 					else
 						vim.fn.setqflist({}, " ", {
 							title = "LSP Definitions",
-							items = vim.lsp.util.locations_to_items(unique_items, vim.lsp.get_client_by_id(ctx.client_id).offset_encoding)
+							items = vim.lsp.util.locations_to_items(unique_items, encoding),
 						})
 						require("telescope.builtin").quickfix({ reuse_win = true })
 					end
@@ -161,12 +166,14 @@ function root.get_clients(opts)
 	return opts and opts.filter and vim.tbl_filter(opts.filter, ret) or ret
 end
 
-function root.on_attach(on_attach)
+function root.on_attach(on_attach, name)
 	vim.api.nvim_create_autocmd("LspAttach", {
 		callback = function(args)
 			local buffer = args.buf
 			local client = vim.lsp.get_client_by_id(args.data.client_id)
-			on_attach(client, buffer)
+			if client and (not name or client.name == name) then
+				on_attach(client, buffer)
+			end
 		end,
 	})
 end
@@ -175,7 +182,7 @@ function root.on_rename(from, to)
 	local clients = root.get_clients()
 	for _, client in ipairs(clients) do
 		if client:supports_method("workspace/willRenameFiles") then
-			local resp = client.request_sync("workspace/willRenameFiles", {
+			local resp = client:request_sync("workspace/willRenameFiles", {
 				files = {
 					{
 						oldUri = vim.uri_from_fname(from),
@@ -188,24 +195,6 @@ function root.on_rename(from, to)
 			end
 		end
 	end
-end
-
-function root.get_config(server)
-	local configs = require("lspconfig.configs")
-	return rawget(configs, server)
-end
-
-function root.disable(server, cond)
-	local lspconfig_util = require("lspconfig.util")
-	local def = root.get_config(server)
-	def.document_config.on_new_config = lspconfig_util.add_hook_before(
-		def.document_config.on_new_config,
-		function(config, root_dir)
-			if cond(root_dir, config) then
-				config.enabled = false
-			end
-		end
-	)
 end
 
 function root.formatter(opts)
@@ -238,7 +227,7 @@ function root.format(opts)
 	local ok, conform = pcall(require, "conform")
 	if ok then
 		opts.formatters = {}
-		opts.lsp_fallback = true
+		opts.lsp_format = "fallback"
 		conform.format(opts)
 	else
 		vim.lsp.buf.format(opts)

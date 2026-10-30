@@ -2,16 +2,29 @@ local Utils = require("universenvim.utils")
 local Config = require("universenvim.config")
 local Keymaps = Utils.lsp.keymaps
 
-local function inlay_hints(buf, value)
-	local ih = vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint
-	if type(ih) == "function" then
-		ih(buf, value)
-	elseif type(ih) == "table" and ih.enable then
-		if value == nil then
-			value = not ih.is_enabled(buf)
-		end
-		ih.enable(buf, value)
+local local_keys = { "keys", "mason", "enabled", "filetypes_exclude", "filetypes_include" }
+
+local function without_local_keys(server_opts)
+	local config = vim.deepcopy(server_opts)
+	for _, key in ipairs(local_keys) do
+		config[key] = nil
 	end
+	return config
+end
+
+-- nvim-lspconfig lists filetypes Neovim never sets (e.g. "typescript.tsx", "yaml.gitlab"); :checkhealth
+-- vim.lsp flags every filetype without runtime files, so keep only the ones Neovim knows.
+local function drop_unknown_filetypes(server)
+	local filetypes = vim.lsp.config[server] and vim.lsp.config[server].filetypes
+	if not filetypes then
+		return
+	end
+	local known = vim.fn.getcompletion("", "filetype")
+	vim.lsp.config(server, {
+		filetypes = vim.tbl_filter(function(ft)
+			return vim.list_contains(known, ft)
+		end, filetypes),
+	})
 end
 
 return {
@@ -19,8 +32,6 @@ return {
 		"neovim/nvim-lspconfig",
 		event = { "BufReadPre", "BufNewFile" },
 		dependencies = {
-			{ "folke/neoconf.nvim", cmd = "Neoconf", config = false, dependencies = { "neovim/nvim-lspconfig" } },
-			{ "folke/lazydev.nvim", ft = "lua", opts = {} },
 			"mason-org/mason.nvim",
 			"mason-org/mason-lspconfig.nvim",
 			{ "antosha417/nvim-lsp-file-operations", config = true },
@@ -32,7 +43,7 @@ return {
 				virtual_text = false,
 				severity_sort = true,
 				signs = {
-					active = {
+					text = {
 						[vim.diagnostic.severity.ERROR] = Config.icons.diagnostics.Error,
 						[vim.diagnostic.severity.WARN] = Config.icons.diagnostics.Warn,
 						[vim.diagnostic.severity.HINT] = Config.icons.diagnostics.Hint,
@@ -43,7 +54,7 @@ return {
 					focusable = false,
 					style = "minimal",
 					border = "rounded",
-					source = "always",
+					source = true,
 					header = "",
 					prefix = "",
 				},
@@ -77,45 +88,16 @@ return {
 			},
 			setup = {
 				eslint = function()
-					local function get_client(buf)
-						return Utils.lsp.get_clients({ name = "eslint", bufnr = buf })[1]
-					end
-
-					local formatter = Utils.lsp.formatter({
+					Utils.format.register(Utils.lsp.formatter({
 						name = "eslint: lsp",
 						primary = false,
 						priority = 200,
 						filter = "eslint",
-					})
-
-					if not pcall(require, "vim.lsp._dynamic") then
-						formatter.name = "eslint: EslintFixAll"
-						formatter.sources = function(buf)
-							local client = get_client(buf)
-							return client and { "eslint" } or {}
-						end
-						formatter.format = function(buf)
-							local client = get_client(buf)
-							if client then
-								local diag =
-									vim.diagnostic.get(buf, { namespace = vim.lsp.diagnostic.get_namespace(client.id) })
-								if #diag > 0 then
-									vim.cmd("EslintFixAll")
-								end
-							end
-						end
-					end
-
-					Utils.format.register(formatter)
+					}))
 				end,
 			},
 		},
 		config = function(_, opts)
-			if Utils.is_available("neoconf.nvim") then
-				local plugin = require("lazy.core.config").spec.plugins["neoconf.nvim"]
-				require("neoconf").setup(require("lazy.core.plugin").values(plugin, "opts", false))
-			end
-
 			Utils.format.register(Utils.lsp.formatter())
 
 			if opts.autoformat ~= nil then
@@ -130,84 +112,65 @@ return {
 
 			vim.lsp.handlers["client/registerCapability"] = function(err, res, ctx)
 				local ret = register_capability(err, res, ctx)
-				local client_id = ctx.client_id
-				local client = vim.lsp.get_client_by_id(client_id)
-				local buffer = vim.api.nvim_get_current_buf()
-				Keymaps.on_attach(client, buffer)
+				local client = vim.lsp.get_client_by_id(ctx.client_id)
+				if client then
+					Keymaps.on_attach(client, vim.api.nvim_get_current_buf())
+				end
 				return ret
-			end
-
-			for name, icon in pairs(Config.icons.diagnostics) do
-				name = "DiagnosticSign" .. name
-				vim.fn.sign_define(name, { text = icon, texthl = name, numhl = "" })
 			end
 
 			if opts.inlay_hints.enabled then
 				Utils.lsp.on_attach(function(client, buffer)
 					if client:supports_method("textDocument/inlayHint") then
-						inlay_hints(buffer, true)
+						vim.lsp.inlay_hint.enable(true, { bufnr = buffer })
 					end
 				end)
 			end
 
 			if type(opts.diagnostics.virtual_text) == "table" and opts.diagnostics.virtual_text.prefix == "icons" then
-				opts.diagnostics.virtual_text.prefix = vim.fn.has("nvim-0.10.0") == 0 and "●"
-					or function(diagnostic)
-						local icons = Config.icons.diagnostics
-						for d, icon in pairs(icons) do
-							if diagnostic.severity == vim.diagnostic.severity[d:upper()] then
-								return icon
-							end
+				opts.diagnostics.virtual_text.prefix = function(diagnostic)
+					local icons = Config.icons.diagnostics
+					for d, icon in pairs(icons) do
+						if diagnostic.severity == vim.diagnostic.severity[d:upper()] then
+							return icon
 						end
 					end
+				end
 			end
 
 			vim.diagnostic.config(vim.deepcopy(opts.diagnostics))
 
-			local servers = opts.servers
 			local has_cmp, cmp_nvim_lsp = pcall(require, "cmp_nvim_lsp")
-			local capabilities = vim.tbl_deep_extend(
-				"force",
-				{},
-				vim.lsp.protocol.make_client_capabilities(),
-				has_cmp and cmp_nvim_lsp.default_capabilities() or {},
-				opts.capabilities or {}
-			)
+			vim.lsp.config("*", {
+				capabilities = vim.tbl_deep_extend(
+					"force",
+					{},
+					vim.lsp.protocol.make_client_capabilities(),
+					has_cmp and cmp_nvim_lsp.default_capabilities() or {},
+					opts.capabilities or {}
+				),
+			})
 
-			local have_mason, mlsp = pcall(require, "mason-lspconfig")
-			local all_mslp_servers = have_mason
-				and vim.tbl_keys(require("mason-lspconfig.mappings").get_mason_map().lspconfig_to_package)
-				or {}
-			local mason_exclude = {}
-
-			---@return boolean? use_mason
-			local function configure(server)
-				local server_opts = vim.tbl_deep_extend("force", {
-					capabilities = vim.deepcopy(capabilities),
-				}, servers[server] or {})
-
-				local use_mason = server_opts.mason ~= false and vim.tbl_contains(all_mslp_servers, server)
-				local setup = opts.setup[server] or opts.setup["*"]
-
-				if setup and setup(server, server_opts) then
-					mason_exclude[#mason_exclude + 1] = server
-				else
-					vim.lsp.config(server, server_opts)
-					if not use_mason then
-						vim.lsp.enable(server)
+			local mason_servers = {}
+			for server, server_opts in pairs(opts.servers) do
+				server_opts = server_opts == true and {} or server_opts
+				if server_opts and server_opts.enabled ~= false then
+					local hook = opts.setup[server] or opts.setup["*"]
+					if not (hook and hook(server, server_opts)) then
+						vim.lsp.config(server, without_local_keys(server_opts))
+						drop_unknown_filetypes(server)
+						if server_opts.mason == false then
+							vim.lsp.enable(server)
+						else
+							mason_servers[#mason_servers + 1] = server
+						end
 					end
 				end
 				return use_mason
 			end
 
-			local ensure_installed = vim.tbl_filter(configure, vim.tbl_keys(servers))
-
-			if have_mason then
-				mlsp.setup({
-					ensure_installed = ensure_installed,
-					automatic_enable = { exclude = mason_exclude },
-				})
-			end
+			Utils.mason.ensure_servers(mason_servers)
+			require("mason-lspconfig").setup({ automatic_enable = mason_servers })
 		end,
 	},
 	{
@@ -221,10 +184,11 @@ return {
 				"shfmt",
 				"prettier",
 			},
-			automatic_installation = true,
 		},
 		config = function(_, opts)
-			require("mason").setup(opts)
+			local mason_opts = vim.deepcopy(opts)
+			mason_opts.ensure_installed = nil
+			require("mason").setup(mason_opts)
 			local mr = require("mason-registry")
 			mr:on("package:install:success", function()
 				vim.defer_fn(function()
@@ -234,20 +198,17 @@ return {
 					})
 				end, 100)
 			end)
-			local function ensure_installed()
-				for _, tool in ipairs(opts.ensure_installed) do
-					local p = mr.get_package(tool)
-					if not p:is_installed() then
-						p:install()
-					end
-				end
-			end
-			if mr.refresh then
-				mr.refresh(ensure_installed)
-			else
-				ensure_installed()
-			end
+			Utils.mason.ensure_installed(opts.ensure_installed)
 		end,
+	},
+	{
+		"folke/lazydev.nvim",
+		ft = "lua",
+		opts = {
+			library = {
+				{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
+			},
+		},
 	},
 	{
 		"nvimtools/none-ls.nvim",

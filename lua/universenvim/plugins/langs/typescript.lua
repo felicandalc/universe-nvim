@@ -1,7 +1,11 @@
 local Utils = require("universenvim.utils")
 
 return {
-	{ "dmmulroy/ts-error-translator.nvim" },
+	{
+		"dmmulroy/ts-error-translator.nvim",
+		ft = { "typescript", "typescriptreact", "javascript", "javascriptreact" },
+		opts = {},
+	},
 	{
 		"nvim-treesitter/nvim-treesitter",
 		opts = function(_, opts)
@@ -12,20 +16,6 @@ return {
 	},
 	{
 		"neovim/nvim-lspconfig",
-		dependencies = {
-			"jose-elias-alvarez/typescript.nvim",
-			init = function()
-				Utils.lsp.on_attach(function(_, buffer)
-					vim.keymap.set(
-						"n",
-						"<leader>co",
-						"TypescriptOrganizeImports",
-						{ buffer = buffer, desc = "Organize Imports" }
-					)
-					vim.keymap.set("n", "<leader>cR", "TypescriptRenameFile", { desc = "Rename File", buffer = buffer })
-				end)
-			end,
-		},
 		opts = {
 			servers = {
 				tsserver = {
@@ -75,7 +65,8 @@ return {
 						{
 							"gD",
 							function()
-								local params = vim.lsp.util.make_position_params()
+								local client = Utils.lsp.get_clients({ name = "vtsls", bufnr = 0 })[1]
+								local params = vim.lsp.util.make_position_params(0, client and client.offset_encoding or "utf-16")
 								Utils.lsp.execute({
 									command = "typescript.goToSourceDefinition",
 									arguments = { params.textDocument.uri, params.position },
@@ -141,14 +132,14 @@ return {
 							local action, uri, range = unpack(command.arguments)
 
 							local function move(newf)
-								client.request("workspace/executeCommand", {
+								client:request("workspace/executeCommand", {
 									command = command.command,
 									arguments = { action, uri, range, newf },
 								})
 							end
 
 							local fname = vim.uri_to_fname(uri)
-							client.request("workspace/executeCommand", {
+							client:request("workspace/executeCommand", {
 								command = "typescript.tsserverRequest",
 								arguments = {
 									"getMoveToRefactoringFileSuggestions",
@@ -212,12 +203,8 @@ return {
 					host = "localhost",
 					port = "${port}",
 					executable = {
-						command = "node",
-						args = {
-							require("mason-registry").get_package("js-debug-adapter"):get_install_path()
-								.. "/js-debug/src/dapDebugServer.js",
-							"${port}",
-						},
+						command = vim.fn.exepath("js-debug-adapter") ~= "" and vim.fn.exepath("js-debug-adapter") or "js-debug-adapter",
+						args = { "${port}" },
 					},
 				}
 			end

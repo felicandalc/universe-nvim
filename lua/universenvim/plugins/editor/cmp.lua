@@ -147,9 +147,13 @@ return {
 						fallback()
 					end,
 					["<Tab>"] = cmp.mapping(function(fallback)
-						local has_codeium, codeium_result = pcall(vim.fn["codeium#Accept"])
-						if has_codeium and codeium_result ~= "" then
-							vim.fn["codeium#Accept"]()
+						local has_codeium, codeium = pcall(require, "codeium.virtual_text")
+						if has_codeium and codeium.get_current_completion_item() then
+							vim.api.nvim_feedkeys(
+								vim.api.nvim_replace_termcodes(codeium.accept(), true, false, true),
+								"n",
+								false
+							)
 							return
 						elseif cmp.visible() then
 							cmp.select_next_item()
@@ -182,6 +186,7 @@ return {
 					}),
 				}),
 				sources = cmp.config.sources({
+					{ name = "lazydev", group_index = 0 },
 					{ name = "nvim_lsp" },
 					{ name = "codeium" },
 					{ name = "path" },
