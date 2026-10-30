@@ -86,12 +86,12 @@ sudo pacman -S neovim git curl tar unzip gzip base-devel ripgrep fd tree-sitter-
 <summary>Windows (winget or scoop)</summary>
 
 ```powershell
-winget install Neovim.Neovim Git.Git BurntSushi.ripgrep.MSVC sharkdp.fd zig.zig Kitware.CMake OpenJS.NodeJS.LTS Python.Python.3.12 GoLang.Go Microsoft.PowerShell 7zip.7zip
+winget install Neovim.Neovim Git.Git BurntSushi.ripgrep.MSVC sharkdp.fd zig.zig ezwinports.make Kitware.CMake tree-sitter.tree-sitter-cli OpenJS.NodeJS.LTS Python.Python.3.12 GoLang.Go Microsoft.PowerShell 7zip.7zip
 # or
-scoop install neovim git ripgrep fd zig cmake make nodejs-lts python go pwsh 7zip
+scoop install neovim git ripgrep fd zig cmake make tree-sitter nodejs-lts python go pwsh 7zip gzip unzip
 ```
 
-Install the `tree-sitter` CLI from its [GitHub releases](https://github.com/tree-sitter/tree-sitter/releases) and put it on `PATH`. Set `git config --global core.autocrlf false` (the repo also ships a `.gitattributes`).
+winget has no `gzip`/`unzip` that land on `PATH` (Codeium needs `gzip` to unpack its server); get them with `scoop install gzip unzip`. Set `git config --global core.autocrlf false` (the repo also ships a `.gitattributes`).
 
 </details>
 
