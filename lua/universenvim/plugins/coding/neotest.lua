@@ -6,7 +6,7 @@ return {
 		optional = true,
 		opts = {
 			spec = {
-				["<leader>t"] = { name = "+test" },
+				{ "<leader>t", group = "test" },
 			},
 		},
 	},

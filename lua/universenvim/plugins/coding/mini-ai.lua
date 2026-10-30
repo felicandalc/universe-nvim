@@ -1,7 +1,7 @@
 local Utils = require("universenvim.utils")
 
 return {
-	"echasnovski/mini.ai",
+	"nvim-mini/mini.ai",
 	event = "VeryLazy",
 	opts = function()
 		local ai = require("mini.ai")

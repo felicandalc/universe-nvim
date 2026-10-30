@@ -2,7 +2,7 @@ local Utils = require("universenvim.utils.core")
 
 return {
 	{
-		"echasnovski/mini.pairs",
+		"nvim-mini/mini.pairs",
 		event = "VeryLazy",
 		opts = {},
 		keys = {

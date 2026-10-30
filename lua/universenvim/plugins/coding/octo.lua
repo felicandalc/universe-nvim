@@ -8,6 +8,7 @@ return {
 			"nvim-telescope/telescope.nvim",
 			"nvim-tree/nvim-web-devicons",
 		},
+		cmd = "Octo",
 		config = function()
 			if vim.fn.executable("gh") == 1 then
 				local status_ok, octo = pcall(require, "octo")
