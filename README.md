@@ -96,7 +96,7 @@ winget has no `gzip`/`unzip` that land on `PATH` (Mason needs them to unpack som
 
 </details>
 
-After installing, start Neovim, let lazy.nvim, Mason and nvim-treesitter finish, then run `:checkhealth`.
+After installing, start Neovim, let lazy.nvim, Mason and nvim-treesitter finish, then run `:checkhealth universenvim` to verify the tools above and `:checkhealth` for everything else.
 
 ### Installation
 
