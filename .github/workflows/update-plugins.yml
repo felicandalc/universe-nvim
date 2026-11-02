@@ -50,7 +50,7 @@ jobs:
         run: |
           {
             echo 'body<<EOF'
-            echo 'Weekly `Lazy! sync` result. The Health workflow runs on this branch; review its summary before merging.'
+            echo "Weekly \`Lazy! sync\` result. The Health workflow runs on this branch; review its summary before merging."
             echo
             git diff -U0 lazy-lock.json | node .github/scripts/lock-diff.mjs
             echo EOF

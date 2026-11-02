@@ -28,6 +28,7 @@ jobs:
         shell: pwsh
     env:
       GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
       OUT_DIR: ${{ github.workspace }}/out
       SAMPLES_DIR: ${{ github.workspace }}/.github/health/samples
     steps:
