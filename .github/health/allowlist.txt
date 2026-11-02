@@ -1,2 +1,25 @@
 # One Lua pattern per line, matched against "<healthcheck> | <WARNING|ERROR> <message>".
 # Only environment noise of a CI runner belongs here, never a real config problem.
+
+# Mason optional toolchains. Packages that need them are skipped, and the config installs none that do.
+^mason | WARNING luarocks: not available
+^mason | WARNING wget: not available
+^mason | WARNING Composer: not available
+^mason | WARNING PHP: not available
+^mason | WARNING Ruby: not available
+^mason | WARNING RubyGem: not available
+^mason | WARNING javac: not available
+^mason | WARNING java: not available
+^mason | WARNING julia: not available
+
+# Headless runner without a display server or session clipboard.
+^vim.provider | WARNING No clipboard tool found
+
+# The runner has no inotify-tools and Neovim cannot do anything about that from config.
+^vim.lsp | WARNING libuv%-watchdirs has known performance issues
+
+# Headless run: TERM is unset, so `infocmp -L` fails.
+^vim.health | ERROR command failed: { "infocmp", "%-L" }
+
+# cmp.lua builds jsregexp only outside Windows on purpose; LSP snippet transformations are unavailable there.
+^luasnip | WARNING For Variable/Placeholder%-transformations, luasnip requires
