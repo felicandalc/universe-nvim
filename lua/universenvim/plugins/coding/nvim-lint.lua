@@ -39,7 +39,14 @@ return {
 				ctx.dirname = vim.fn.fnamemodify(ctx.filename, ":h")
 				names = vim.tbl_filter(function(name)
 					local linter = lint.linters[name]
-					return linter and not (type(linter) == "table" and linter.condition and not linter.condition(ctx))
+					if type(linter) == "function" then
+					return true
+				end
+				if not linter or (linter.condition and not linter.condition(ctx)) then
+					return false
+				end
+				local cmd = type(linter.cmd) == "function" and linter.cmd() or linter.cmd
+				return type(cmd) ~= "string" or vim.fn.executable(cmd) == 1
 				end, names)
 
 				if #names > 0 then

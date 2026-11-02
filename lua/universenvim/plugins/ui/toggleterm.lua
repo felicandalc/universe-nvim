@@ -1,5 +1,17 @@
 local Utils = require("universenvim.utils.core")
 
+local function shell()
+	if not Utils.is_windows() then
+		return vim.o.shell
+	end
+	for _, candidate in ipairs({ "pwsh", "powershell" }) do
+		if vim.fn.executable(candidate) == 1 then
+			return candidate .. " -NoLogo"
+		end
+	end
+	return vim.o.shell
+end
+
 return {
 	"akinsho/toggleterm.nvim",
 	version = "*",
@@ -22,7 +34,7 @@ return {
 			persist_size = true,
 			direction = "float",
 			close_on_exit = true,
-			shell = vim.o.shell,
+			shell = shell(),
 			float_opts = {
 				border = "curved",
 				winblend = 0,
@@ -70,7 +82,7 @@ return {
 			end
 		end
 
-		local python = Terminal:new({ cmd = "python", hidden = true })
+		local python = Terminal:new({ cmd = vim.fn.executable("python3") == 1 and "python3" or "python", hidden = true })
 
 		function _PYTHON_TOGGLE()
 			python:toggle()

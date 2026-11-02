@@ -93,10 +93,6 @@ return {
 			hijack_unnamed_buffer_when_opening = false,
 			sync_root_with_cwd = true,
 			update_cwd = true,
-			system_open = {
-				cmd = nil,
-				args = {},
-			},
 			hijack_directories = {
 				enable = true,
 				auto_open = true,

@@ -2,7 +2,7 @@ local Constants = require("universenvim.config.constants")
 
 return {
 	{
-		"echasnovski/mini.indentscope",
+		"nvim-mini/mini.indentscope",
 		version = false,
 		event = { "BufReadPre", "BufNewFile" },
 		opts = {

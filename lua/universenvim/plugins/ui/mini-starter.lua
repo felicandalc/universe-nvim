@@ -1,7 +1,7 @@
 local Utils = require("universenvim.utils.core")
 
 return {
-	"echasnovski/mini.starter",
+	"nvim-mini/mini.starter",
 	version = false,
 	event = "VimEnter",
 	opts = function()

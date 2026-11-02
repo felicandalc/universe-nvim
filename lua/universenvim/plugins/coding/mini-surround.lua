@@ -1,6 +1,6 @@
 return {
 	{
-		"echasnovski/mini.surround",
+		"nvim-mini/mini.surround",
 		keys = function(_, keys)
 			local plugin = require("lazy.core.config").spec.plugins["mini.surround"]
 			local opts = require("lazy.core.plugin").values(plugin, "opts", false)

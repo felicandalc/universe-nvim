@@ -3,7 +3,7 @@ local Utils = require("universenvim.utils.core")
 return {
 	"akinsho/bufferline.nvim",
 	event = "VeryLazy",
-	dependencies = { "echasnovski/mini.bufremove" },
+	dependencies = { "nvim-mini/mini.bufremove" },
 	keys = {
 		{ "<leader>bp", "<Cmd>BufferLineTogglePin<CR>", desc = "Toggle pin" },
 		{ "<leader>bP", "<Cmd>BufferLineGroupClose ungrouped<CR>", desc = "Delete non-pinned buffers" },

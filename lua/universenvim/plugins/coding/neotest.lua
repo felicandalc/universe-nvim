@@ -6,13 +6,13 @@ return {
 		optional = true,
 		opts = {
 			spec = {
-				["<leader>t"] = { name = "+test" },
+				{ "<leader>t", group = "test" },
 			},
 		},
 	},
 	{
 		"nvim-neotest/neotest",
-		dependencies = { "nvim-neotest/neotest-jest", "folke/trouble.nvim" },
+		dependencies = { "nvim-neotest/nvim-nio", "nvim-neotest/neotest-jest", "folke/trouble.nvim" },
 		opts = {
 			adapters = {
 				["neotest-jest"] = {

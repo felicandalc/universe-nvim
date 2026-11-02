@@ -33,7 +33,6 @@ The plugins are categorized into logical groups with dedicated directories:
 - `editor/` - Text editing enhancements (telescope, flash, cmp, trouble)
 - `ui/` - User interface (bufferline, lualine, nvim-tree, noice, whichkey)
 - `langs/` - Language-specific configurations (TypeScript, Go, Docker, etc.)
-- `ai/` - AI-powered tools (Windsurf for AI code completion)
 
 **Key Patterns:**
 - All plugin files return a table/array compatible with Lazy.nvim spec
@@ -73,14 +72,9 @@ The configuration includes dedicated language support for:
 - DO NOT add redundant comments in code
 - Keep configurations minimal and clean
 
-## AI Completion Setup
+## Completion
 
-**Smart Tab Behavior:**
-- Tab first tries to accept Codeium AI suggestions
-- If no AI suggestion, Tab navigates nvim-cmp completion menu  
+**Tab Behavior:**
+- Tab navigates the nvim-cmp completion menu
 - If no cmp menu, Tab handles LuaSnip expansion/jumping
 - Otherwise falls back to normal Tab behavior
-
-**Codeium Authentication:**
-- Run `:Codeium Auth` after installation
-- Follow browser prompt to get authentication token

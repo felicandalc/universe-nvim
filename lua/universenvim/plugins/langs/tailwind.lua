@@ -12,20 +12,14 @@ return {
 			},
 			setup = {
 				tailwindcss = function(_, opts)
-					local tailwindServerName = "tailwindcss"
-					local status_ok, tw = pcall(require, "lspconfig.configs." .. tailwindServerName)
-					if not status_ok then
-						local server_status_ok, tw_server =
-							pcall(require, "lspconfig.server_configurations." .. tailwindServerName)
-						if not server_status_ok then
-							Utils.error("LSPConfig - TailwindCSS could not be loaded!")
-							return
-						end
-						tw = tw_server
+					local default_filetypes = vim.lsp.config.tailwindcss and vim.lsp.config.tailwindcss.filetypes
+					if not default_filetypes then
+						Utils.error("LSPConfig - TailwindCSS could not be loaded!")
+						return
 					end
 					opts.filetypes = opts.filetypes or {}
 
-					vim.list_extend(opts.filetypes, tw.default_config.filetypes)
+					vim.list_extend(opts.filetypes, default_filetypes)
 
 					opts.filetypes = vim.tbl_filter(function(ft)
 						return not vim.tbl_contains(opts.filetypes_exclude or {}, ft)

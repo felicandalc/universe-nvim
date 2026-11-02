@@ -73,7 +73,7 @@ return {
 				},
 				formatters_by_ft = {
 					lua = { "stylua" },
-					fish = not Core.is_windows() and { "fish_indent" } or nil,
+					fish = vim.fn.executable("fish_indent") == 1 and { "fish_indent" } or nil,
 					sh = { "shfmt" },
 				},
 				formatters = {
