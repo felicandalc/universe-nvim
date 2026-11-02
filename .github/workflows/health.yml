@@ -1,0 +1,144 @@
+name: Health
+
+on:
+  pull_request:
+    branches: [next]
+  push:
+    branches: [next]
+  workflow_dispatch:
+
+concurrency:
+  group: health-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    name: health (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OUT_DIR: ${{ github.workspace }}/out
+      SAMPLES_DIR: ${{ github.workspace }}/.github/health/samples
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install prerequisites (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install git ripgrep fd tree-sitter-cli node python go gh lazygit
+
+      - name: Install prerequisites (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y git curl tar unzip gzip build-essential ripgrep fd-find python3 python3-venv golang-go libsqlite3-dev clangd xclip wl-clipboard
+          sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
+          curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+          curl -fsSL https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-x64.gz | gunzip > tree-sitter
+          sudo install -m 0755 tree-sitter /usr/local/bin/tree-sitter
+          version="$(gh api repos/jesseduffield/lazygit/releases/latest --jq .tag_name | sed 's/^v//')"
+          curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${version}/lazygit_${version}_Linux_x86_64.tar.gz" | tar xz lazygit
+          sudo install -m 0755 lazygit /usr/local/bin/lazygit
+
+      - name: Install prerequisites (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          iex "& {$(irm get.scoop.sh)} -RunAsAdmin"
+          $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+          scoop install git
+          scoop bucket add extras
+          scoop install ripgrep fd zig cmake make tree-sitter nodejs-lts python go pwsh 7zip gzip unzip gh lazygit
+          if (-not (Get-Command tree-sitter -ErrorAction SilentlyContinue)) {
+            Write-Host "::warning::scoop has no tree-sitter, using the GitHub release"
+            $gz = Join-Path $env:RUNNER_TEMP 'ts.gz'
+            Invoke-WebRequest https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-windows-x64.gz -OutFile $gz
+            $in = [IO.File]::OpenRead($gz)
+            $out = [IO.File]::Create("$env:USERPROFILE\scoop\shims\tree-sitter.exe")
+            (New-Object IO.Compression.GZipStream($in, [IO.Compression.CompressionMode]::Decompress)).CopyTo($out)
+            $out.Close(); $in.Close()
+          }
+          git config --global core.autocrlf false
+
+      - name: Restrict PATH to Windows base and scoop
+        if: runner.os == 'Windows'
+        run: |
+          $user = [Environment]::GetEnvironmentVariable('PATH', 'User')
+          $base = 'C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Windows\System32\OpenSSH'
+          "PATH=$env:USERPROFILE\scoop\shims;$user;$base" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install Neovim (stable)
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Tool versions
+        run: |
+          foreach ($t in 'nvim','git','rg','fd','make','cc','gcc','clang','cl','zig','cmake','node','npm','python3','python','go','gh','lazygit','tree-sitter') {
+            $c = Get-Command $t -ErrorAction SilentlyContinue
+            Write-Host ("{0,-12} {1}" -f $t, $(if ($c) { $c.Source } else { 'MISSING' }))
+          }
+          nvim --version | Select-Object -First 3
+          tree-sitter --version
+
+      - name: Install config
+        run: |
+          $dest = if ($IsWindows) { Join-Path $env:LOCALAPPDATA 'nvim' } else { Join-Path $HOME '.config/nvim' }
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Copy-Item -Recurse -Force init.lua, lua, ftplugin, lazy-lock.json -Destination $dest
+          New-Item -ItemType Directory -Force -Path $env:OUT_DIR | Out-Null
+
+      - name: Restore plugins from lazy-lock.json
+        timeout-minutes: 20
+        run: |
+          nvim --headless "+Lazy! restore" +qa 2>&1 | Tee-Object -FilePath "$env:OUT_DIR/lazy-restore.log"
+
+      - name: Wait for Mason and treesitter installs
+        timeout-minutes: 45
+        env:
+          HEALTH_PHASE: install
+        run: |
+          nvim --headless -c "luafile .github/health/run.lua" 2>&1 | Tee-Object -FilePath "$env:OUT_DIR/install-phase.log"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run :checkhealth
+        timeout-minutes: 15
+        env:
+          HEALTH_PHASE: report
+        run: |
+          nvim --headless -c "luafile .github/health/run.lua" 2>&1 | Tee-Object -FilePath "$env:OUT_DIR/report-phase.log"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check warnings against the allowlist
+        run: |
+          nvim -l .github/health/check.lua "$env:OUT_DIR/checkhealth.txt" .github/health/allowlist.txt 2>&1 | Tee-Object -FilePath "$env:OUT_DIR/summary.txt"
+          $status = $LASTEXITCODE
+          "### checkhealth on ${{ matrix.os }}", '```', (Get-Content "$env:OUT_DIR/summary.txt"), '```' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          exit $status
+
+      - name: Collect logs
+        if: always()
+        run: |
+          $data = if ($IsWindows) { Join-Path $env:LOCALAPPDATA 'nvim-data' } else { Join-Path $HOME '.local/share/nvim' }
+          Copy-Item (Join-Path $data 'mason.log') $env:OUT_DIR -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: health-${{ matrix.os }}
+          path: out/

@@ -1,0 +1,2 @@
+# One Lua pattern per line, matched against "<healthcheck> | <WARNING|ERROR> <message>".
+# Only environment noise of a CI runner belongs here, never a real config problem.
