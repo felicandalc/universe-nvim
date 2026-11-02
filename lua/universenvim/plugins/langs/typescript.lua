@@ -80,7 +80,8 @@ return {
 							function()
 								Utils.lsp.execute({
 									command = "typescript.findAllFileReferences",
-									arguments = { vim.uri_from_bufnr(0) },
+									-- vim.uri.from_buf is 0.13+; uri_from_bufnr is deprecated there
+									arguments = { (vim.uri and vim.uri.from_buf or vim.uri_from_bufnr)(0) },
 									open = true,
 								})
 							end,
