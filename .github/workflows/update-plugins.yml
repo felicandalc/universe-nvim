@@ -1,0 +1,73 @@
+name: Update plugins
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+env:
+  BRANCH: chore/weekly-plugin-update
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: next
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git curl tar unzip gzip build-essential ripgrep fd-find
+          curl -fsSL https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-x64.gz | gunzip > tree-sitter
+          sudo install -m 0755 tree-sitter /usr/local/bin/tree-sitter
+
+      - name: Install Neovim (stable)
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install config
+        run: |
+          mkdir -p ~/.config
+          ln -s "$GITHUB_WORKSPACE" ~/.config/nvim
+
+      - name: Sync plugins
+        run: nvim --headless "+Lazy! sync" +qa
+
+      - name: Describe changed plugins
+        id: diff
+        run: |
+          {
+            echo 'body<<EOF'
+            echo "Weekly \`Lazy! sync\` result. The Health workflow runs on this branch; review its summary before merging."
+            echo
+            git diff -U0 lazy-lock.json | node .github/scripts/lock-diff.mjs
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the pull request
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: ${{ env.BRANCH }}
+          base: next
+          add-paths: lazy-lock.json
+          commit-message: "chore(deps): update plugins"
+          title: "chore(deps): weekly plugin update"
+          body: ${{ steps.diff.outputs.body }}
+          assignees: felicandalc
+
+      - name: Run health checks on the update branch
+        if: steps.pr.outputs.pull-request-number
+        run: gh workflow run health.yml --ref "$BRANCH" -R "$GITHUB_REPOSITORY"
