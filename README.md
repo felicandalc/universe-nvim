@@ -20,6 +20,7 @@
         <ul>
           <li><a href="#pre-requisites">Pre-requisites</a></li>
           <li><a href="#installation">Installation</a></li>
+          <li><a href="#updating">Updating</a></li>
         </ul>
     </li>
   </ul>
@@ -32,7 +33,7 @@ You can freely use it <strong>out-of-the-box</strong> or you can install it and 
 
 ### Pre-requisites
 
-Neovim **0.12 or later** (latest [stable release](https://github.com/neovim/neovim/releases/tag/stable)). Distro packages are often older; use the official tarball, AppImage or installer if yours is.
+Neovim **0.12 or later** (latest [stable release](https://github.com/neovim/neovim/releases/tag/stable)). Distro packages are often older; use the official tarball, AppImage or installer if yours is. Nightly works too, but keep it current: plugins enable 0.13-only APIs on any `0.13-dev` build, so a nightly older than those APIs breaks them (nvim-tree fails on builds without `SessionWritePre`).
 
 | Tool | Why | Required |
 | --- | --- | --- |
@@ -138,3 +139,11 @@ After installing, start Neovim, let lazy.nvim, Mason and nvim-treesitter finish,
   ```
 
 </details>
+
+### Updating
+
+```sh
+git -C ~/.config/nvim pull
+```
+
+Then open Neovim and run `:Lazy restore` to install the plugin versions pinned in `lazy-lock.json` (`:Lazy sync` updates them instead), followed by `:TSUpdate` and `:MasonUpdate`. If you changed `lazy-lock.json` locally, discard it before pulling (`git -C ~/.config/nvim checkout lazy-lock.json`).
