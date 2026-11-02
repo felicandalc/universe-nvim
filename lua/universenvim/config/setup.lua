@@ -68,8 +68,6 @@ function M.setup()
 					"spellfile_plugin",
 					"vimball",
 					"vimballPlugin",
-					"zip",
-					"zipPlugin",
 					"tutor",
 					"rplugin",
 					"syntax",
